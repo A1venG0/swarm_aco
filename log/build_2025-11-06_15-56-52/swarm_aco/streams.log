@@ -1,0 +1,36 @@
+[0.488s] Invoking command in '/home/artem/maga/gz_ws/src/swarm_aco': PYTHONPATH=/home/artem/maga/gz_ws/src/swarm_aco/build/swarm_aco/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base build/swarm_aco build --build-base /home/artem/maga/gz_ws/src/swarm_aco/build/swarm_aco/build install --record /home/artem/maga/gz_ws/src/swarm_aco/build/swarm_aco/install.log --single-version-externally-managed install_data
+[0.689s] running egg_info
+[0.689s] creating build/swarm_aco/swarm_aco.egg-info
+[0.689s] writing build/swarm_aco/swarm_aco.egg-info/PKG-INFO
+[0.690s] writing dependency_links to build/swarm_aco/swarm_aco.egg-info/dependency_links.txt
+[0.690s] writing entry points to build/swarm_aco/swarm_aco.egg-info/entry_points.txt
+[0.690s] writing requirements to build/swarm_aco/swarm_aco.egg-info/requires.txt
+[0.690s] writing top-level names to build/swarm_aco/swarm_aco.egg-info/top_level.txt
+[0.690s] writing manifest file 'build/swarm_aco/swarm_aco.egg-info/SOURCES.txt'
+[0.691s] reading manifest file 'build/swarm_aco/swarm_aco.egg-info/SOURCES.txt'
+[0.692s] writing manifest file 'build/swarm_aco/swarm_aco.egg-info/SOURCES.txt'
+[0.692s] running build
+[0.692s] running build_py
+[0.692s] creating /home/artem/maga/gz_ws/src/swarm_aco/build/swarm_aco/build
+[0.692s] creating /home/artem/maga/gz_ws/src/swarm_aco/build/swarm_aco/build/lib
+[0.692s] creating /home/artem/maga/gz_ws/src/swarm_aco/build/swarm_aco/build/lib/swarm_aco
+[0.692s] copying swarm_aco/__init__.py -> /home/artem/maga/gz_ws/src/swarm_aco/build/swarm_aco/build/lib/swarm_aco
+[0.692s] running install
+[0.693s] running install_lib
+[0.693s] creating /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/lib/python3.10/site-packages/swarm_aco
+[0.693s] copying /home/artem/maga/gz_ws/src/swarm_aco/build/swarm_aco/build/lib/swarm_aco/__init__.py -> /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/lib/python3.10/site-packages/swarm_aco
+[0.694s] byte-compiling /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/lib/python3.10/site-packages/swarm_aco/__init__.py to __init__.cpython-310.pyc
+[0.694s] running install_data
+[0.694s] creating /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/share/ament_index
+[0.694s] creating /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/share/ament_index/resource_index
+[0.694s] creating /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/share/ament_index/resource_index/packages
+[0.694s] copying resource/swarm_aco -> /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/share/ament_index/resource_index/packages
+[0.694s] copying package.xml -> /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/share/swarm_aco
+[0.694s] running install_egg_info
+[0.696s] Copying build/swarm_aco/swarm_aco.egg-info to /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/lib/python3.10/site-packages/swarm_aco-0.0.1-py3.10.egg-info
+[0.697s] running install_scripts
+[0.713s] Installing aco_decision_node script to /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/lib/swarm_aco
+[0.713s] Installing pheromone_deposit_node script to /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/lib/swarm_aco
+[0.713s] Installing pheromone_map_node script to /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/lib/swarm_aco
+[0.713s] writing list of installed files to '/home/artem/maga/gz_ws/src/swarm_aco/build/swarm_aco/install.log'
+[0.734s] Invoked command in '/home/artem/maga/gz_ws/src/swarm_aco' returned '0': PYTHONPATH=/home/artem/maga/gz_ws/src/swarm_aco/build/swarm_aco/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base build/swarm_aco build --build-base /home/artem/maga/gz_ws/src/swarm_aco/build/swarm_aco/build install --record /home/artem/maga/gz_ws/src/swarm_aco/build/swarm_aco/install.log --single-version-externally-managed install_data

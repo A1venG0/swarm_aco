@@ -1,0 +1,34 @@
+running egg_info
+creating build/swarm_aco/swarm_aco.egg-info
+writing build/swarm_aco/swarm_aco.egg-info/PKG-INFO
+writing dependency_links to build/swarm_aco/swarm_aco.egg-info/dependency_links.txt
+writing entry points to build/swarm_aco/swarm_aco.egg-info/entry_points.txt
+writing requirements to build/swarm_aco/swarm_aco.egg-info/requires.txt
+writing top-level names to build/swarm_aco/swarm_aco.egg-info/top_level.txt
+writing manifest file 'build/swarm_aco/swarm_aco.egg-info/SOURCES.txt'
+reading manifest file 'build/swarm_aco/swarm_aco.egg-info/SOURCES.txt'
+writing manifest file 'build/swarm_aco/swarm_aco.egg-info/SOURCES.txt'
+running build
+running build_py
+creating /home/artem/maga/gz_ws/src/swarm_aco/build/swarm_aco/build
+creating /home/artem/maga/gz_ws/src/swarm_aco/build/swarm_aco/build/lib
+creating /home/artem/maga/gz_ws/src/swarm_aco/build/swarm_aco/build/lib/swarm_aco
+copying swarm_aco/__init__.py -> /home/artem/maga/gz_ws/src/swarm_aco/build/swarm_aco/build/lib/swarm_aco
+running install
+running install_lib
+creating /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/lib/python3.10/site-packages/swarm_aco
+copying /home/artem/maga/gz_ws/src/swarm_aco/build/swarm_aco/build/lib/swarm_aco/__init__.py -> /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/lib/python3.10/site-packages/swarm_aco
+byte-compiling /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/lib/python3.10/site-packages/swarm_aco/__init__.py to __init__.cpython-310.pyc
+running install_data
+creating /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/share/ament_index
+creating /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/share/ament_index/resource_index
+creating /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/share/ament_index/resource_index/packages
+copying resource/swarm_aco -> /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/share/ament_index/resource_index/packages
+copying package.xml -> /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/share/swarm_aco
+running install_egg_info
+Copying build/swarm_aco/swarm_aco.egg-info to /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/lib/python3.10/site-packages/swarm_aco-0.0.1-py3.10.egg-info
+running install_scripts
+Installing aco_decision_node script to /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/lib/swarm_aco
+Installing pheromone_deposit_node script to /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/lib/swarm_aco
+Installing pheromone_map_node script to /home/artem/maga/gz_ws/src/swarm_aco/install/swarm_aco/lib/swarm_aco
+writing list of installed files to '/home/artem/maga/gz_ws/src/swarm_aco/build/swarm_aco/install.log'

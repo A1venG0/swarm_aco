@@ -1,0 +1,5 @@
+[console_scripts]
+aco_decision_node = swarm_aco.aco_decision_node:main
+pheromone_deposit_node = swarm_aco.pheromone_deposit_node:main
+pheromone_map_node = swarm_aco.pheromone_map_node:main
+
