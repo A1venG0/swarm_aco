@@ -9,90 +9,100 @@ from std_msgs.msg import String
 class PheromoneDepositNode(Node):
     def __init__(self):
         super().__init__('pheromone_deposit_node')
-        
+
         # Parameters
         self.declare_parameter('drone_id', 'drone1')
         self.declare_parameter('deposit_rate', 2.0)
         self.declare_parameter('base_deposit', 5.0)
         self.declare_parameter('success_deposit', 20.0)
-        
+
+        # NEW: negative pheromone support
+        self.declare_parameter('enable_negative', True)
+        self.declare_parameter('base_neg_deposit', 1.5)
+        self.declare_parameter('success_neg_deposit', 8.0)
+
         self.drone_id = self.get_parameter('drone_id').value
-        self.deposit_rate = self.get_parameter('deposit_rate').value
-        self.base_deposit = self.get_parameter('base_deposit').value
-        self.success_deposit = self.get_parameter('success_deposit').value
-        
+        self.deposit_rate = float(self.get_parameter('deposit_rate').value)
+        self.base_deposit = float(self.get_parameter('base_deposit').value)
+        self.success_deposit = float(self.get_parameter('success_deposit').value)
+
+        self.enable_negative = bool(self.get_parameter('enable_negative').value)
+        self.base_neg_deposit = float(self.get_parameter('base_neg_deposit').value)
+        self.success_neg_deposit = float(self.get_parameter('success_neg_deposit').value)
+
         # State
         self.current_pose = None
         self.task_success = False
-        
-        # Subscribe to drone odometry
+
+        # Odometry subscription (remap to /droneN/local_position/odom in launch)
         self.odom_sub = self.create_subscription(
-            Odometry,
-            '/odom',
-            self.odom_callback,
-            qos_profile_sensor_data
+            Odometry, '/odom', self.odom_callback, qos_profile_sensor_data
         )
-        
-        # Subscribe to task status (optional)
+
+        # Optional task-status
         self.status_sub = self.create_subscription(
-            String,
-            '/task_status',
-            self.status_callback,
-            10
+            String, '/task_status', self.status_callback, 10
         )
-        
-        # Publisher
-        self.deposit_pub = self.create_publisher(
-            PointStamped, 
-            '/pheromone_deposit', 
-            10
-        )
-        
+
+        # Publishers
+        self.deposit_pub = self.create_publisher(PointStamped, '/pheromone_deposit', 10)
+        self.deposit_neg_pub = self.create_publisher(PointStamped, '/pheromone_deposit_neg', 10)
+
         # Timer
-        self.timer = self.create_timer(1.0 / self.deposit_rate, self.deposit_callback)
-        
+        self.timer = self.create_timer(max(0.01, 1.0 / self.deposit_rate), self.deposit_callback)
+
         self.get_logger().info(
-            f'PheromoneDepositNode for {self.drone_id} started. '
-            f'Base deposit: {self.base_deposit}, Success: {self.success_deposit}'
+            f'{self.drone_id}: deposit node up | +base={self.base_deposit} +succ={self.success_deposit} '
+            f'| neg={self.enable_negative} (-base={self.base_neg_deposit} -succ={self.success_neg_deposit})'
         )
-    
+
     def odom_callback(self, msg: Odometry):
-        """Update drone position from odometry."""
         self.current_pose = msg.pose.pose.position
-    
+
     def status_callback(self, msg: String):
-        """Listen for task completion signals."""
         if 'success' in msg.data.lower() or 'completed' in msg.data.lower():
             self.task_success = True
-            self.get_logger().info(f'{self.drone_id} task completed! Depositing bonus pheromone.')
-    
+            self.get_logger().info(f'{self.drone_id} task completed → bonus pheromone next tick')
+
     def deposit_callback(self):
-        """Periodically deposit pheromone at current location."""
         if self.current_pose is None:
-            self.get_logger().debug('Waiting for odometry...', throttle_duration_sec=5.0)
+            # keep it quiet but visible when needed
+            self.get_logger().debug('Waiting for odom...', throttle_duration_sec=5.0)
             return
-        
-        # Determine deposit amount
-        amount = self.success_deposit if self.task_success else self.base_deposit
-        
-        msg = PointStamped()
-        msg.header.stamp = self.get_clock().now().to_msg()
-        msg.header.frame_id = 'world'
-        msg.point.x = self.current_pose.x
-        msg.point.y = self.current_pose.y
-        msg.point.z = amount  # Using z field for deposit amount
-        
-        self.deposit_pub.publish(msg)
-        
+
+        # Choose amounts
+        pos_amt = self.success_deposit if self.task_success else self.base_deposit
+        neg_amt = self.success_neg_deposit if self.task_success else self.base_neg_deposit
+
+        # Positive deposit
+        pos = PointStamped()
+        pos.header.stamp = self.get_clock().now().to_msg()
+        pos.header.frame_id = 'world'
+        pos.point.x = float(self.current_pose.x)
+        pos.point.y = float(self.current_pose.y)
+        pos.point.z = float(pos_amt)  # z carries amount
+        self.deposit_pub.publish(pos)
+
+        # Negative deposit (optional)
+        if self.enable_negative:
+            neg = PointStamped()
+            neg.header.stamp = pos.header.stamp
+            neg.header.frame_id = 'world'
+            neg.point.x = pos.point.x
+            neg.point.y = pos.point.y
+            neg.point.z = float(neg_amt)
+            self.deposit_neg_pub.publish(neg)
+
         if self.task_success:
             self.get_logger().info(
-                f'{self.drone_id} deposited SUCCESS pheromone at '
-                f'({msg.point.x:.2f}, {msg.point.y:.2f}) amount={amount:.2f}'
+                f'{self.drone_id} SUCCESS drop @ ({pos.point.x:.1f},{pos.point.y:.1f}) '
+                f'+{pos_amt:.1f} / -{neg_amt:.1f}'
             )
-            self.task_success = False  # Reset flag
+            self.task_success = False
         else:
             self.get_logger().debug(
-                f'{self.drone_id} deposited at ({msg.point.x:.2f}, {msg.point.y:.2f})',
+                f'{self.drone_id} drop @ ({pos.point.x:.1f},{pos.point.y:.1f}) '
+                f'+{pos_amt:.1f} / -{neg_amt:.1f}',
                 throttle_duration_sec=5.0
             )
 

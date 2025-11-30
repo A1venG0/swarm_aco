@@ -26,7 +26,9 @@ setup(
     entry_points={
         'console_scripts': [
             'pheromone_map_node = swarm_aco.pheromone_map_node:main',
+            'pheromone_map_neg_node = swarm_aco.pheromone_map_neg:main',
             'pheromone_deposit_node = swarm_aco.pheromone_deposit_node:main',
+            'pheromone_hotspot_node = swarm_aco.pheromone_hotspot_node:main',
             'aco_decision_node = swarm_aco.aco_decision_node:main',
             'aco_navigation_bridge = swarm_aco.aco_navigation_bridge:main',
             'aco_visualizer_node = swarm_aco.aco_visualizer_node:main',

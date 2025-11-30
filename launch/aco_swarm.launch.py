@@ -21,6 +21,39 @@ def generate_launch_description():
             'deposit_amount': 5.0
         }]
     )
+
+    pheromone_map_neg = Node(
+        package='swarm_aco',
+        executable='pheromone_map_neg_node',
+        name='pheromone_map_neg_node',
+        output='screen',
+        parameters=[{
+            'width': 100, 'height': 100, 'resolution': 1.0,
+            'origin_x': -50.0, 'origin_y': -50.0,
+            'evaporation_neg': 0.02, 'publish_rate': 2.0,
+            'max_val_neg': 100.0, 'deposit_amount_neg': 2.0
+        }]
+    )
+
+    hotspot = Node(
+        package='swarm_aco',
+        executable='pheromone_hotspot_node',
+        name='pheromone_hotspot',
+        output='screen',
+        parameters=[{
+            # match your map params
+            'width': 100, 'height': 100, 'resolution': 1.0,
+            'origin_x': -50.0, 'origin_y': -50.0,
+
+            # hotspot behavior
+            'randomize': True,
+            'respawn_secs': 25.0,
+            'publish_rate': 2.0,
+            'amount': 70.0,
+            'spread_cells': 2,
+            'falloff_sigma': 1.2,
+        }]
+    )
     
     # ========== DRONE 1 ==========
     drone1_deposit = Node(
@@ -46,8 +79,13 @@ def generate_launch_description():
         name='drone1_aco',
         output='screen',
         parameters=[{
-            'alpha': 1.0,
-            'beta': 2.0,
+            'alpha': 2.0,
+            'beta': 1.0,
+            'hotspot_on_threshold': 50.0,
+            'hotspot_off_threshold': 10.0,   # Wide hysteresis
+            'visit_neg_amount': 100.0,       # Strong cooldown
+            'mode_cooldown_secs': 10.0,      # 10s refractory period
+            'dwell_cycles': 3,
             'resolution': 1.0,
             'origin_x': -50.0,
             'origin_y': -50.0,
@@ -64,6 +102,7 @@ def generate_launch_description():
         }],
         remappings=[
             ('/aco_next_waypoint', '/drone1/aco_next_waypoint'),
+            ('/local_position/pose', '/drone1/local_position/pose')
         ]
     )
     
@@ -111,8 +150,13 @@ def generate_launch_description():
         name='drone2_aco',
         output='screen',
         parameters=[{
-            'alpha': 1.0,
-            'beta': 2.0,
+            'alpha': 2.0,
+            'beta': 1.0,
+            'hotspot_on_threshold': 50.0,
+            'hotspot_off_threshold': 10.0,   # Wide hysteresis
+            'visit_neg_amount': 100.0,       # Strong cooldown
+            'mode_cooldown_secs': 10.0,      # 10s refractory period
+            'dwell_cycles': 3,
             'resolution': 1.0,
             'origin_x': -50.0,
             'origin_y': -50.0,
@@ -130,6 +174,7 @@ def generate_launch_description():
         }],
         remappings=[
             ('/aco_next_waypoint', '/drone2/aco_next_waypoint'),
+            ('/local_position/pose', '/drone2/local_position/pose')
         ]
     )
     
@@ -177,8 +222,13 @@ def generate_launch_description():
         name='drone3_aco',
         output='screen',
         parameters=[{
-            'alpha': 1.0,
-            'beta': 2.0,
+            'alpha': 2.0,
+            'beta': 1.0,
+            'hotspot_on_threshold': 50.0,
+            'hotspot_off_threshold': 10.0,   # Wide hysteresis
+            'visit_neg_amount': 100.0,       # Strong cooldown
+            'mode_cooldown_secs': 10.0,      # 10s refractory period
+            'dwell_cycles': 3,
             'resolution': 1.0,
             'origin_x': -50.0,
             'origin_y': -50.0,
@@ -196,6 +246,7 @@ def generate_launch_description():
         }],
         remappings=[
             ('/aco_next_waypoint', '/drone3/aco_next_waypoint'),
+            ('/local_position/pose', '/drone3/local_position/pose')
         ]
     )
     
@@ -221,6 +272,8 @@ def generate_launch_description():
     
     return LaunchDescription([
         pheromone_map,
+        pheromone_map_neg,
+        hotspot,
         drone1_deposit,
         drone1_aco,
         drone1_bridge,
