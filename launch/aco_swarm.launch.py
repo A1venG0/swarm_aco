@@ -2,8 +2,6 @@ from launch import LaunchDescription
 from launch_ros.actions import Node
 
 def generate_launch_description():
-    
-    # Pheromone Map Node (shared by all drones)
     pheromone_map = Node(
         package='swarm_aco',
         executable='pheromone_map_node',
@@ -41,7 +39,6 @@ def generate_launch_description():
         name='pheromone_hotspot',
         output='screen',
         parameters=[{
-            # match your map params
             'width': 100, 'height': 100, 'resolution': 1.0,
             'origin_x': -50.0, 'origin_y': -50.0,
 
@@ -82,9 +79,9 @@ def generate_launch_description():
             'alpha': 2.0,
             'beta': 1.0,
             'hotspot_on_threshold': 50.0,
-            'hotspot_off_threshold': 10.0,   # Wide hysteresis
-            'visit_neg_amount': 100.0,       # Strong cooldown
-            'mode_cooldown_secs': 10.0,      # 10s refractory period
+            'hotspot_off_threshold': 10.0, # Wide hysteresis
+            'visit_neg_amount': 100.0, # Strong cooldown
+            'mode_cooldown_secs': 10.0, # 10s refractory period
             'dwell_cycles': 3,
             'resolution': 1.0,
             'origin_x': -50.0,
@@ -153,9 +150,9 @@ def generate_launch_description():
             'alpha': 2.0,
             'beta': 1.0,
             'hotspot_on_threshold': 50.0,
-            'hotspot_off_threshold': 10.0,   # Wide hysteresis
-            'visit_neg_amount': 100.0,       # Strong cooldown
-            'mode_cooldown_secs': 10.0,      # 10s refractory period
+            'hotspot_off_threshold': 10.0, # Wide hysteresis
+            'visit_neg_amount': 100.0, # Strong cooldown
+            'mode_cooldown_secs': 10.0, # 10s refractory period
             'dwell_cycles': 3,
             'resolution': 1.0,
             'origin_x': -50.0,
@@ -163,7 +160,6 @@ def generate_launch_description():
             'width': 100,
             'height': 100,
             'decision_rate': 0.5,
-            # Flat list: [x1, y1, x2, y2, x3, y3, ...]
             'waypoints': [
                 -20.0, 0.0,
                 0.0, 20.0,
@@ -225,9 +221,9 @@ def generate_launch_description():
             'alpha': 2.0,
             'beta': 1.0,
             'hotspot_on_threshold': 50.0,
-            'hotspot_off_threshold': 10.0,   # Wide hysteresis
-            'visit_neg_amount': 100.0,       # Strong cooldown
-            'mode_cooldown_secs': 10.0,      # 10s refractory period
+            'hotspot_off_threshold': 10.0, # Wide hysteresis
+            'visit_neg_amount': 100.0, # Strong cooldown
+            'mode_cooldown_secs': 10.0, # 10s refractory period
             'dwell_cycles': 3,
             'resolution': 1.0,
             'origin_x': -50.0,
@@ -235,7 +231,6 @@ def generate_launch_description():
             'width': 100,
             'height': 100,
             'decision_rate': 0.5,
-            # Flat list: [x1, y1, x2, y2, x3, y3, ...]
             'waypoints': [
                 -10.0, -10.0,
                 10.0, -10.0,

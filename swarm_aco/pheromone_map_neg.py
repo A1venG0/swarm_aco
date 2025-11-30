@@ -7,11 +7,6 @@ import numpy as np
 from threading import Lock
 
 class PheromoneMapNegNode(Node):
-    """
-    Negative pheromone (repulsion) map.
-    Subscribes:  /pheromone_deposit_neg  (PointStamped; z = amount)
-    Publishes:   /pheromone_map_neg      (Float32MultiArray flattened H*W)
-    """
     def __init__(self):
         super().__init__('pheromone_map_neg_node')
 
@@ -22,7 +17,7 @@ class PheromoneMapNegNode(Node):
         self.origin_x   = self.declare_parameter('origin_x', -50.0).value
         self.origin_y   = self.declare_parameter('origin_y', -50.0).value
 
-        # τ⁻ params (slightly slower evaporation)
+        # tau- params (slightly slower evaporation)
         self.rho          = self.declare_parameter('evaporation_neg', 0.02).value
         self.publish_rate = self.declare_parameter('publish_rate', 1.0).value
         self.max_val      = self.declare_parameter('max_val_neg', 100.0).value

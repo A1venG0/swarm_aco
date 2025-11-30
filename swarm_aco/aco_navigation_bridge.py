@@ -110,7 +110,7 @@ class ACONavigationBridge(Node):
         setpoint.header.frame_id = 'map'
         setpoint.pose.position.x = self.target_waypoint.x
         setpoint.pose.position.y = self.target_waypoint.y
-        setpoint.pose.position.z = 2.0  # Fixed altitude, adjust as needed
+        setpoint.pose.position.z = 2.0  # Fixed altitude
         
         # Keep orientation level (optional: add yaw control)
         setpoint.pose.orientation.w = 1.0

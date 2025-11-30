@@ -29,7 +29,6 @@ class PheromoneHotspotNode(Node):
         self.hotspot_x   = float(self.declare_parameter('hotspot_x', 0.0).value)
         self.hotspot_y   = float(self.declare_parameter('hotspot_y', 0.0).value)
 
-        # NEW: pacing knobs to encourage exploration
         # After a respawn, keep the hotspot silent for this long
         self.quiet_after_respawn_secs = float(self.declare_parameter('quiet_after_respawn_secs', 10.0).value)
         # Optional duty cycle (set either to 0 to disable). While ACTIVE:
@@ -71,7 +70,7 @@ class PheromoneHotspotNode(Node):
             f'quiet_after_respawn={self.quiet_after_respawn_secs}s, duty=({self.duty_on_secs}/{self.duty_off_secs})s'
         )
 
-    # --- helpers ---
+    # helpers
     def _randomize_position(self):
         # keep a safety margin so spread stays in-bounds
         margin = max(2, self.spread_cells + 1)
@@ -175,7 +174,7 @@ class PheromoneHotspotNode(Node):
         m.color.a = 0.9
         self.marker_pub.publish(m)
 
-    # --- main depositing tick ---
+    # main depositing tick
     def _tick_deposit(self):
         # state housekeeping
         self._maybe_exit_quiet()

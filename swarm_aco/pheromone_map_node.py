@@ -79,14 +79,9 @@ class PheromoneMapNode(Node):
                         
                         new_value = self.pheromone[ny, nx]
                         cells_modified += 1
-                        
-                        #self.get_logger().info(
-                            #f'  ✓ Cell [{ny}, {nx}]: {old_value:.2f} -> {new_value:.2f} (factor={factor:.3f})'
-                        #)
                     else:
                         self.get_logger().warn(f'  ✗ Cell ({nx}, {ny}) out of bounds!')
             
-            # ADD THIS:
             #self.get_logger().info(f'After deposit - Total pheromone: {self.pheromone.sum():.2f}')
             #self.get_logger().info(f'Modified {cells_modified} cells')
             #self.get_logger().info(f'=== add_deposit END ===')
