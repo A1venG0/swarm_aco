@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # If you have it in a file:
-df = pd.read_csv("/tmp/aco_metrics.csv")
+df = pd.read_csv("/home/artem/maga/aco_metrics_alpha_four.csv")
 
 # If you pasted it into a string, replace this with io.StringIO(...)
 # import io

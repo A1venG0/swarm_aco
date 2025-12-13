@@ -1,4 +1,6 @@
 from launch import LaunchDescription
+from launch.substitutions import LaunchConfiguration
+from launch.actions import DeclareLaunchArgument
 from launch_ros.actions import Node
 
 def generate_launch_description():
@@ -51,6 +53,58 @@ def generate_launch_description():
             'falloff_sigma': 1.2,
         }]
     )
+
+    policy_arg = DeclareLaunchArgument(
+        'policy',
+        default_value='stigmergic_aco',
+        description='Decision policy: stigmergic_aco | random_walk | nearest_waypoint | pure_aco_no_negative'
+    )
+
+    seed_arg = DeclareLaunchArgument(
+        'seed',
+        default_value='1',
+        description='Random seed for repeatable runs'
+    )
+
+    out_csv_arg = DeclareLaunchArgument(
+        'out_csv',
+        default_value='/tmp/metrics.csv',
+        description='Output CSV path for metrics logger'
+    )
+
+    metrics = Node(
+        package='swarm_aco',
+        executable='aco_metrics_logger',
+        name='aco_metrics_logger',
+        output='screen',
+        parameters=[{
+            'resolution': 1.0,
+            'origin_x': -50.0,
+            'origin_y': -50.0,
+            'width': 100,
+            'height': 100,
+
+            'footprint_m': 1.0,
+            'sample_dt': 1.0,
+            't_end_sec': 300.0,
+            'x_thresholds': [0.5, 0.8, 0.9],
+
+            'pose_topics': [
+                '/drone1/local_position/pose',
+                '/drone2/local_position/pose',
+                '/drone3/local_position/pose',
+            ],
+            'mode_topic': '/aco_mode',
+
+            # forward experiment identifiers so CSV rows are self-describing
+            'policy': LaunchConfiguration('policy'),
+            'seed': LaunchConfiguration('seed'),
+
+            # file per run is easiest
+            'out_csv': LaunchConfiguration('out_csv'),
+        }]
+    )
+
     
     # ========== DRONE 1 ==========
     drone1_deposit = Node(
