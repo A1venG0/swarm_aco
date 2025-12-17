@@ -43,11 +43,10 @@ class PheromoneDepositNode(Node):
         # Marker viz params
         self.declare_parameter('viz_enable', True)
         self.declare_parameter('viz_lifetime_sec', 3.0)
-        self.declare_parameter('viz_size_base', 0.18) # ground footprint (m)
-        self.declare_parameter('viz_size_gain', 0.01) # +amount -> bigger blob
+        self.declare_parameter('viz_size_base', 0.18)
+        self.declare_parameter('viz_size_gain', 0.01)
         self.declare_parameter('frame_id', 'world')
 
-        # --- Read params ---
         self.drone_id = self.get_parameter('drone_id').value
         self.deposit_rate = float(self.get_parameter('deposit_rate').value)
 
@@ -94,7 +93,7 @@ class PheromoneDepositNode(Node):
         self.deposit_pub = self.create_publisher(PointStamped, '/pheromone_deposit', 10)
         self.deposit_neg_pub = self.create_publisher(PointStamped, '/pheromone_deposit_neg', 10)
 
-        # Marker mirrors (toggle in RViz)
+        # Marker mirrors
         self.viz_pos_pub = self.create_publisher(Marker, '/pheromone_viz_pos', 10)
         self.viz_neg_pub = self.create_publisher(Marker, '/pheromone_viz_neg', 10)
 
@@ -109,7 +108,6 @@ class PheromoneDepositNode(Node):
             f'| min_move={self.min_move_m}m | mode_topic={self.mode_topic} | viz={self.viz_enable}'
         )
 
-    # Callbacks
     def odom_callback(self, msg: Odometry):
         self.current_pose = msg.pose.pose.position
 
@@ -124,7 +122,6 @@ class PheromoneDepositNode(Node):
             self.current_mode = incoming
             self.get_logger().info(f'{self.drone_id}: mode → {self.current_mode}')
 
-    # Helpers
     def moved_enough(self, x, y):
         if self.last_drop_xy is None:
             return True
@@ -171,11 +168,9 @@ class PheromoneDepositNode(Node):
         if not self.moved_enough(x, y):
             return
 
-        # base amounts (+/-) with optional success bonus
         pos_amt = self.success_deposit if self.task_success else self.base_deposit
         neg_amt = self.success_neg_deposit if self.task_success else self.base_neg_deposit
 
-        # apply mode scaling
         if self.current_mode == 'EXPLORE':
             pos_amt *= self.explore_pos_scale
             neg_amt *= self.explore_neg_scale
@@ -205,7 +200,6 @@ class PheromoneDepositNode(Node):
             self.deposit_neg_pub.publish(neg)
             self._publish_viz(x, y, neg_amt, positive=False)
 
-        # Logging & state
         if self.task_success:
             self.get_logger().info(
                 f'{self.drone_id} SUCCESS drop @ ({x:.1f},{y:.1f}) '
