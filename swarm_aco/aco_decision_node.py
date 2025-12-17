@@ -14,22 +14,19 @@ class ACODecisionNode(Node):
     def __init__(self):
         super().__init__('aco_decision_node')
 
-        # --- Parameters ---
-        # Converge (legacy)
         self.declare_parameter('alpha', 1.0)
         self.declare_parameter('beta',  2.0)
 
-        # Explore (novelty-biased)
-        self.declare_parameter('explore_alpha', 0.7)          # weight on (low) positive pheromone
-        self.declare_parameter('explore_beta',  1.2)          # heuristic (distance) weight
-        self.declare_parameter('explore_gamma', 0.5)          # weight on negative/visited suppression
-        self.declare_parameter('explore_epsilon', 0.10)       # epsilon-greedy in EXPLORE
-        self.declare_parameter('explore_tau_clip', 10.0)      # cap pos pheromone in EXPLORE
-        self.declare_parameter('explore_mask_radius', 6.0)    # m; suppress near last peak
-        self.declare_parameter('explore_step', 6.0)           # m; projected step from pose
-        self.declare_parameter('explore_block_radius_cells', 2)  # skip candidates too near pose cell
-        self.declare_parameter('min_wp_separation', 1.5)      # m; avoid re-issuing near-identical WPs
-        self.declare_parameter('explore_neg_amount', 1.0)     # small negative "visit" per EXPLORE tick
+        self.declare_parameter('explore_alpha', 0.5)
+        self.declare_parameter('explore_beta',  1.2)
+        self.declare_parameter('explore_gamma', 0.5)
+        self.declare_parameter('explore_epsilon', 0.10)
+        self.declare_parameter('explore_tau_clip', 10.0)
+        self.declare_parameter('explore_mask_radius', 6.0)
+        self.declare_parameter('explore_step', 6.0)
+        self.declare_parameter('explore_block_radius_cells', 2)
+        self.declare_parameter('min_wp_separation', 1.5)
+        self.declare_parameter('explore_neg_amount', 1.0)
 
         # Map geometry
         self.declare_parameter('resolution', 1.0)
@@ -49,8 +46,8 @@ class ACODecisionNode(Node):
         # Hotspot logic
         self.declare_parameter('hotspot_on_threshold', 50.0)
         self.declare_parameter('hotspot_off_threshold', 10.0)
-        self.declare_parameter('hotspot_detect_cycles', 3)    # hysteresis to enter CONVERGE
-        self.declare_parameter('visit_neg_amount', 100.0)     # used to "cool" peak (3x3) at dwell
+        self.declare_parameter('hotspot_detect_cycles', 3)
+        self.declare_parameter('visit_neg_amount', 100.0)
         self.declare_parameter('mode_cooldown_secs', 10.0)
         self.declare_parameter('hotspot_step', 8.0)
         self.declare_parameter('hotspot_direct', False)
@@ -103,10 +100,9 @@ class ACODecisionNode(Node):
         self.current_pose = None
         self.last_converge_exit = None
         self.detect_counter = 0
-        self.last_wp_sent = None  # (x, y) of last published waypoint
+        self.last_wp_sent = None
         self.eps = 1e-6
 
-        # Parse waypoints
         raw = self.get_parameter('waypoints').value
         self.waypoints = []
         if isinstance(raw, list) and len(raw) >= 2 and len(raw) % 2 == 0:
@@ -116,7 +112,6 @@ class ACODecisionNode(Node):
             self.get_logger().warn("No valid waypoints provided; using [0,0].")
             self.waypoints = [{'x': 0.0, 'y': 0.0}]
 
-        # --- ROS 2 I/O ---
         self.map_sub = self.create_subscription(
             Float32MultiArray, '/pheromone_map', self.map_callback, 10
         )
@@ -142,7 +137,6 @@ class ACODecisionNode(Node):
             f"map={self.width}x{self.height}@{self.resolution}m"
         )
 
-    # ---------------- Callbacks ----------------
     def map_callback(self, msg: Float32MultiArray):
         arr = np.array(msg.data, dtype=np.float32)
         expected = self.width * self.height
@@ -299,12 +293,10 @@ class ACODecisionNode(Node):
         probs = [v / total for v in scores]
         return int(np.random.choice(range(len(probs)), p=probs))
 
-    # --------------- Main loop -----------------
     def main_loop(self):
         if self.map_pos is None:
             return
 
-        # --- Hotspot hysteresis + cooldown ---
         peak = self.find_hotspot_peak()
         now = self.get_clock().now().nanoseconds / 1e9
         in_cooldown = False
@@ -400,7 +392,6 @@ class ACODecisionNode(Node):
                 self.publish_mode()
             return
 
-        # ----------------- EXPLORE -----------------
         # Small negative "visit" deposit to discourage re-sampling
         if self.current_pose is not None and self.explore_neg_amount > 0.0:
             vx, vy = self.current_pose

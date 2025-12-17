@@ -109,7 +109,6 @@ class ACOMetricsLogger(Node):
     def __init__(self):
         super().__init__("aco_metrics_logger")
 
-        # --- experiment labels (so you can compare alpha/beta/rho) ---
         self.declare_parameter("policy", "stigmergic_aco")
         self.declare_parameter("seed", 0)
         self.declare_parameter("alpha", float("nan"))
@@ -117,30 +116,24 @@ class ACOMetricsLogger(Node):
         self.declare_parameter("rho", float("nan"))
         self.declare_parameter("out_csv", "aco_metrics.csv")
 
-        # --- timing ---
         self.declare_parameter("sample_dt", 1.0)
         self.declare_parameter("t_end_sec", 300.0)
 
-        # --- map geometry (must match your decision node) ---
         self.declare_parameter("resolution", 1.0)
         self.declare_parameter("origin_x", -50.0)
         self.declare_parameter("origin_y", -50.0)
         self.declare_parameter("width", 100)
         self.declare_parameter("height", 100)
 
-        # --- pheromone topics (matches your decision node) ---
         self.declare_parameter("pheromone_pos_topic", "/pheromone_map")
         self.declare_parameter("pheromone_neg_topic", "/pheromone_map_neg")
 
-        # Compute stats for: pos, neg, tau=max(0,pos-neg)
         self.declare_parameter("tau_use_combined_pos_minus_neg", True)
 
-        # Thresholding (applies to each field independently)
-        # If tau_threshold_abs is NaN, uses tau_threshold_frac_of_max * max(field)
+
         self.declare_parameter("tau_threshold_abs", float("nan"))
         self.declare_parameter("tau_threshold_frac_of_max", 0.8)
 
-        # --- swarm topics ---
         self.declare_parameter(
             "pose_topics",
             [
@@ -152,7 +145,6 @@ class ACOMetricsLogger(Node):
         self.declare_parameter("mode_topic", "/aco_mode")
         self.declare_parameter("detection_mode_name", "CONVERGE")
 
-        # --- read params ---
         self.policy = str(self.get_parameter("policy").value)
         self.seed = int(self.get_parameter("seed").value)
         self.alpha = float(self.get_parameter("alpha").value)
@@ -181,7 +173,6 @@ class ACOMetricsLogger(Node):
         self.mode_topic = str(self.get_parameter("mode_topic").value)
         self.detection_mode_name = str(self.get_parameter("detection_mode_name").value).strip().upper()
 
-        # --- state ---
         self.t0 = self.get_clock().now()
         self.last_sample_t = 0.0
 
@@ -203,7 +194,6 @@ class ACOMetricsLogger(Node):
         self.map_tau: Optional[np.ndarray] = None
         self.map_stamp_sec: Optional[float] = None
 
-        # --- ROS I/O ---
         # pheromone
         self.create_subscription(Float32MultiArray, self.pos_topic, self.pos_cb, 10)
         self.create_subscription(Float32MultiArray, self.neg_topic, self.neg_cb, 10)
@@ -302,7 +292,6 @@ class ACOMetricsLogger(Node):
             return
         self.map_tau = np.maximum(self.map_pos - self.map_neg, 0.0)
 
-    # ---------- derived metrics ----------
     def _mode_fractions(self, t_now: float) -> Dict[str, float]:
         durations = dict(self.mode_durations)
         # include ongoing current mode
@@ -322,7 +311,6 @@ class ACOMetricsLogger(Node):
         px, py = self.cell_to_world(cx, cy)
         return (px, py, peak_val)
 
-    # ---------- csv ----------
     def write_row(self, t: float):
         # swarm metrics
         points = [p for p in self.pose_latest.values() if p is not None]
@@ -342,7 +330,6 @@ class ACOMetricsLogger(Node):
             "mean": None, "max": None, "sum": None, "entropy": None, "concentration": None, "n_above": None, "n": None
         }
 
-        # peaks (these are super diagnostic for ACO)
         pos_px, pos_py, pos_peak = self._peak_info(self.map_pos)
         tau_px, tau_py, tau_peak = self._peak_info(self.map_tau) if self.use_tau else (None, None, None)
 
