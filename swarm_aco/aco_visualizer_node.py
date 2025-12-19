@@ -13,7 +13,6 @@ class ACOVisualizerNode(Node):
     def __init__(self):
         super().__init__('aco_visualizer_node')
 
-        # --- Map geometry (must match map nodes) ---
         self.declare_parameter('width', 100)
         self.declare_parameter('height', 100)
         self.declare_parameter('resolution', 1.0)
@@ -21,7 +20,7 @@ class ACOVisualizerNode(Node):
         self.declare_parameter('origin_y', -50.0)
         self.declare_parameter('frame_id', 'map')
 
-        # Topics (input)
+        # Topics
         self.declare_parameter('topic_pos', '/pheromone_map')
         self.declare_parameter('topic_neg', '/pheromone_map_neg')
 
@@ -59,12 +58,10 @@ class ACOVisualizerNode(Node):
         self.map_pos = None
         self.map_neg = None
 
-        # Cached grids for periodic republish
         self.last_pos_grid = None
         self.last_neg_grid = None
         self.last_comb_grid = None
 
-        # Latched QoS for OccupancyGrid
         qos_grid = QoSProfile(
             depth=1,
             reliability=ReliabilityPolicy.RELIABLE,
@@ -219,10 +216,10 @@ class ACOVisualizerNode(Node):
         c = ColorRGBA()
         c.a = 0.85
         if layer == 'pos':
-            c.r, c.g, c.b = 0.0, 0.2 + 0.8 * t, 0.0       # green
+            c.r, c.g, c.b = 0.0, 0.2 + 0.8 * t, 0.0 # green
             return c
         if layer == 'neg':
-            c.r, c.g, c.b = 0.2 + 0.8 * t, 0.0, 0.2 + 0.8 * t  # magenta
+            c.r, c.g, c.b = 0.2 + 0.8 * t, 0.0, 0.2 + 0.8 * t # magenta
             return c
         # combined heat: blue->cyan->green->yellow->red
         if t < 0.25:
@@ -236,7 +233,6 @@ class ACOVisualizerNode(Node):
         return c
 
     def periodic_tick(self):
-        # Re-publish the cached grids (latched) so late RViz still gets them
         if self.publish_grids:
             now = self.get_clock().now().to_msg()
             def bump(g):

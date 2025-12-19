@@ -10,14 +10,12 @@ class PheromoneMapNegNode(Node):
     def __init__(self):
         super().__init__('pheromone_map_neg_node')
 
-        # grid params (share with positive layer)
         self.width      = self.declare_parameter('width', 120).value
         self.height     = self.declare_parameter('height', 120).value
         self.resolution = self.declare_parameter('resolution', 1.0).value
         self.origin_x   = self.declare_parameter('origin_x', -50.0).value
         self.origin_y   = self.declare_parameter('origin_y', -50.0).value
 
-        # tau- params (slightly slower evaporation)
         self.rho          = self.declare_parameter('evaporation_neg', 0.02).value
         self.publish_rate = self.declare_parameter('publish_rate', 1.0).value
         self.max_val      = self.declare_parameter('max_val_neg', 100.0).value

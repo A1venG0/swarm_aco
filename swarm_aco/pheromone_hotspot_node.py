@@ -19,7 +19,6 @@ class PheromoneHotspotNode(Node):
         self.origin_x   = float(self.declare_parameter('origin_x', -50.0).value)
         self.origin_y   = float(self.declare_parameter('origin_y', -50.0).value)
 
-        # Hotspot behavior (existing)
         self.publish_rate = float(self.declare_parameter('publish_rate', 2.0).value)
         self.amount       = float(self.declare_parameter('amount', 60.0).value)
         self.spread_cells = int(self.declare_parameter('spread_cells', 2).value)
@@ -29,16 +28,11 @@ class PheromoneHotspotNode(Node):
         self.hotspot_x   = float(self.declare_parameter('hotspot_x', 0.0).value)
         self.hotspot_y   = float(self.declare_parameter('hotspot_y', 0.0).value)
 
-        # After a respawn, keep the hotspot silent for this long
         self.quiet_after_respawn_secs = float(self.declare_parameter('quiet_after_respawn_secs', 10.0).value)
-        # Optional duty cycle (set either to 0 to disable). While ACTIVE:
-        #   deposit for on secs, then be silent for off secs, repeating.
-        self.duty_on_secs  = float(self.declare_parameter('duty_on_secs', 0.0).value)   # 0 = disabled
-        self.duty_off_secs = float(self.declare_parameter('duty_off_secs', 0.0).value)  # 0 = disabled
-        # Optional max active duration before forcing a quiet break (0 = disabled)
+        self.duty_on_secs  = float(self.declare_parameter('duty_on_secs', 0.0).value)
+        self.duty_off_secs = float(self.declare_parameter('duty_off_secs', 0.0).value)
         self.max_active_duration_secs = float(self.declare_parameter('max_active_duration_secs', 0.0).value)
 
-        # Publishers
         self.ph_pub  = self.create_publisher(PointStamped, '/pheromone_deposit', 10)
         self.neg_pub = self.create_publisher(PointStamped, '/pheromone_deposit_neg', 10)
         self.marker_pub = self.create_publisher(Marker, '/aco_hotspot_marker', 10)
@@ -72,7 +66,6 @@ class PheromoneHotspotNode(Node):
 
     # helpers
     def _randomize_position(self):
-        # keep a safety margin so spread stays in-bounds
         margin = max(2, self.spread_cells + 1)
         min_cx, max_cx = margin, self.width  - margin - 1
         min_cy, max_cy = margin, self.height - margin - 1
@@ -132,7 +125,6 @@ class PheromoneHotspotNode(Node):
         if self.max_active_duration_secs <= 0.0:
             return
         if self.deposit_enabled and (time.time() - self.state_enter_time >= self.max_active_duration_secs):
-            # cut to quiet for the OFF portion (reuse duty_off if set, else use quiet_after_respawn)
             duration = self.duty_off_secs if self.duty_off_secs > 0 else self.quiet_after_respawn_secs
             self.deposit_enabled = False
             self.last_toggle_time = time.time()
@@ -142,14 +134,11 @@ class PheromoneHotspotNode(Node):
     def _tick_respawn(self):
         if not self.randomize:
             return
-        # clear the old one first
         self._clear_old_peak(self.x, self.y)
         self.prev_xy = (self.x, self.y)
-        # move to a new random location
         self._randomize_position()
         self.last_respawn_time = time.time()
         self.get_logger().info(f'Hotspot moved to ({self.x:.2f},{self.y:.2f})')
-        # enter a quiet window so the swarm explores before noticing the new peak
         self._enter_quiet_if_needed(initial=False)
 
     def _publish_marker(self):
@@ -181,7 +170,6 @@ class PheromoneHotspotNode(Node):
         self._apply_duty_cycle()
         self._maybe_force_quiet_break()
 
-        # Always publish marker for viz, even when quiet
         self._publish_marker()
 
         if not self.deposit_enabled:
@@ -189,7 +177,6 @@ class PheromoneHotspotNode(Node):
 
         # center
         self._deposit(self.x, self.y, self.amount)
-        # surround cells with Gaussian falloff
         R = self.spread_cells
         if R > 0:
             for dy in range(-R, R + 1):

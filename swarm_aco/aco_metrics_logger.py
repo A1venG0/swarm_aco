@@ -34,7 +34,7 @@ def avg_pairwise_distance(points: List[Tuple[float, float]]) -> Optional[float]:
 
 def entropy_and_concentration(tau_flat: np.ndarray) -> Tuple[Optional[float], Optional[float]]:
     """
-    Entropy over normalized tau (tau>=0). Concentration = 1 - H/log(N).
+    Entropy over normalized tau.
     If tau sum is 0 -> returns (None, None).
     """
     tau = np.maximum(tau_flat.astype(np.float64), 0.0)
@@ -229,7 +229,6 @@ class ACOMetricsLogger(Node):
         y = self.oy + (cy + 0.5) * self.res
         return (x, y)
 
-    # ---------- callbacks ----------
     def mode_cb(self, msg: String):
         new_mode = msg.data.strip().upper()
         if not new_mode:
@@ -306,7 +305,7 @@ class ACOMetricsLogger(Node):
         if field is None:
             return (None, None, None)
         idx = int(np.argmax(field))
-        cy, cx = divmod(idx, self.W)  # since row-major flatten
+        cy, cx = divmod(idx, self.W)
         peak_val = float(field[cy, cx])
         px, py = self.cell_to_world(cx, cy)
         return (px, py, peak_val)

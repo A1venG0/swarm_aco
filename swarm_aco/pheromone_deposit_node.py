@@ -19,7 +19,7 @@ class PheromoneDepositNode(Node):
         self.declare_parameter('drone_id', 'drone1')
         self.declare_parameter('deposit_rate', 2.0)
 
-        # Base amounts (pre-scale)
+        # Base amounts
         self.declare_parameter('base_deposit', 5.0)
         self.declare_parameter('success_deposit', 20.0)
 
@@ -34,13 +34,10 @@ class PheromoneDepositNode(Node):
         self.declare_parameter('converge_pos_scale', 1.0)
         self.declare_parameter('converge_neg_scale', 0.25)
 
-        # Min movement before dropping (meters)
         self.declare_parameter('min_move_m', 0.4)
 
-        # Mode topic (String: "EXPLORE"/"CONVERGE")
         self.declare_parameter('mode_topic', '/aco_mode')
 
-        # Marker viz params
         self.declare_parameter('viz_enable', True)
         self.declare_parameter('viz_lifetime_sec', 3.0)
         self.declare_parameter('viz_size_base', 0.18)
@@ -93,11 +90,9 @@ class PheromoneDepositNode(Node):
         self.deposit_pub = self.create_publisher(PointStamped, '/pheromone_deposit', 10)
         self.deposit_neg_pub = self.create_publisher(PointStamped, '/pheromone_deposit_neg', 10)
 
-        # Marker mirrors
         self.viz_pos_pub = self.create_publisher(Marker, '/pheromone_viz_pos', 10)
         self.viz_neg_pub = self.create_publisher(Marker, '/pheromone_viz_neg', 10)
 
-        # Timer
         self.timer = self.create_timer(max(0.01, 1.0 / self.deposit_rate), self.deposit_callback)
 
         self.get_logger().info(

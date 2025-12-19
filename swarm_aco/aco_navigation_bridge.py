@@ -112,7 +112,6 @@ class ACONavigationBridge(Node):
         setpoint.pose.position.y = self.target_waypoint.y
         setpoint.pose.position.z = 2.0  # Fixed altitude
         
-        # Keep orientation level (optional: add yaw control)
         setpoint.pose.orientation.w = 1.0
         setpoint.pose.orientation.x = 0.0
         setpoint.pose.orientation.y = 0.0
