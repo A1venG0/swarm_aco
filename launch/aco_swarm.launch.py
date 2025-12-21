@@ -46,7 +46,7 @@ def generate_launch_description():
 
             # hotspot behavior
             'randomize': True,
-            'respawn_secs': 25.0,
+            'respawn_secs': 50.0,
             'publish_rate': 2.0,
             'amount': 70.0,
             'spread_cells': 2,
@@ -131,7 +131,7 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'alpha': 2.0,
-            'beta': 1.0,
+            'beta': 0.2,
             'hotspot_on_threshold': 50.0,
             'hotspot_off_threshold': 10.0, # Wide hysteresis
             'visit_neg_amount': 100.0, # Strong cooldown
@@ -202,7 +202,7 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'alpha': 2.0,
-            'beta': 1.0,
+            'beta': 0.2,
             'hotspot_on_threshold': 50.0,
             'hotspot_off_threshold': 10.0, # Wide hysteresis
             'visit_neg_amount': 100.0, # Strong cooldown
@@ -273,7 +273,7 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'alpha': 2.0,
-            'beta': 1.0,
+            'beta': 0.2,
             'hotspot_on_threshold': 50.0,
             'hotspot_off_threshold': 10.0, # Wide hysteresis
             'visit_neg_amount': 100.0, # Strong cooldown
