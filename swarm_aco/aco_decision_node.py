@@ -3,8 +3,7 @@ import rclpy
 from rclpy.node import Node
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType
 import numpy as np
-from std_msgs.msg import Float32MultiArray
-from std_msgs.msg import String
+from std_msgs.msg import Float32MultiArray, String
 from rclpy.qos import qos_profile_sensor_data
 from geometry_msgs.msg import PointStamped, PoseStamped
 import math
@@ -15,11 +14,13 @@ class ACODecisionNode(Node):
     def __init__(self):
         super().__init__('aco_decision_node')
 
-        self.declare_parameter('alpha', 2.0)
-        self.declare_parameter('beta',  0.2)
+        # Converge params
+        self.declare_parameter('alpha', 1.0)
+        self.declare_parameter('beta',  2.0)
 
+        # Explore params
         self.declare_parameter('explore_alpha', 0.5)
-        self.declare_parameter('explore_beta',  1.2)
+        self.declare_parameter('explore_beta',  0.5)
         self.declare_parameter('explore_gamma', 0.5)
         self.declare_parameter('explore_epsilon', 0.10)
         self.declare_parameter('explore_tau_clip', 10.0)
@@ -29,7 +30,12 @@ class ACODecisionNode(Node):
         self.declare_parameter('min_wp_separation', 1.5)
         self.declare_parameter('explore_neg_amount', 1.0)
 
-        # Map geometry
+        self.declare_parameter('explore_min_eta_dist', 10.0)
+        self.declare_parameter('explore_min_target_sep', 1.0)
+        self.declare_parameter('explore_neg_block_threshold', -1.0)  # <0 disables hard blocking
+
+        self.declare_parameter('converge_min_eta_dist', 1.0)
+
         self.declare_parameter('resolution', 1.0)
         self.declare_parameter('origin_x', -50.0)
         self.declare_parameter('origin_y', -50.0)
@@ -37,14 +43,12 @@ class ACODecisionNode(Node):
         self.declare_parameter('height', 100)
         self.declare_parameter('decision_rate', 1.0)
 
-        # Waypoint set (discrete candidates)
         self.declare_parameter(
             'waypoints',
             [0.0, 0.0],
             ParameterDescriptor(type=ParameterType.PARAMETER_DOUBLE_ARRAY)
         )
 
-        # Hotspot logic
         self.declare_parameter('hotspot_on_threshold', 50.0)
         self.declare_parameter('hotspot_off_threshold', 10.0)
         self.declare_parameter('hotspot_detect_cycles', 3)
@@ -71,6 +75,12 @@ class ACODecisionNode(Node):
         self.min_wp_sep     = float(self.get_parameter('min_wp_separation').value)
         self.explore_neg_amount = float(self.get_parameter('explore_neg_amount').value)
 
+        self.explore_min_eta_dist = float(self.get_parameter('explore_min_eta_dist').value)
+        self.explore_min_target_sep = float(self.get_parameter('explore_min_target_sep').value)
+        self.explore_neg_block_threshold = float(self.get_parameter('explore_neg_block_threshold').value)
+
+        self.converge_min_eta_dist = float(self.get_parameter('converge_min_eta_dist').value)
+
         self.resolution = float(self.get_parameter('resolution').value)
         self.origin_x = float(self.get_parameter('origin_x').value)
         self.origin_y = float(self.get_parameter('origin_y').value)
@@ -93,7 +103,6 @@ class ACODecisionNode(Node):
         self.map_pos = None
         self.map_neg = None
         self.mode = 'EXPLORE'
-        self.current_idx = 0
 
         self.peak_xy = (0.0, 0.0)
         self.hotspot_xy = None
@@ -105,37 +114,35 @@ class ACODecisionNode(Node):
         self.last_wp_sent = None
         self.eps = 1e-6
 
+        self._X = None
+        self._Y = None
+
         raw = self.get_parameter('waypoints').value
         self.waypoints = []
         if isinstance(raw, list) and len(raw) >= 2 and len(raw) % 2 == 0:
             for i in range(0, len(raw), 2):
                 self.waypoints.append({'x': float(raw[i]), 'y': float(raw[i + 1])})
         else:
-            self.get_logger().warn("No valid waypoints provided; using [0,0].")
             self.waypoints = [{'x': 0.0, 'y': 0.0}]
 
-        self.map_sub = self.create_subscription(
-            Float32MultiArray, '/pheromone_map', self.map_callback, 10
-        )
-        self.map_neg_sub = self.create_subscription(
-            Float32MultiArray, '/pheromone_map_neg', self.map_neg_callback, 10
-        )
-        self.pose_sub = self.create_subscription(
-            PoseStamped, '/local_position/pose', self.pose_callback, qos_profile_sensor_data
-        )
+        # Subscriptions
+        self.map_sub = self.create_subscription(Float32MultiArray, '/pheromone_map', self.map_callback, 10)
+        self.map_neg_sub = self.create_subscription(Float32MultiArray, '/pheromone_map_neg', self.map_neg_callback, 10)
+        self.pose_sub = self.create_subscription(PoseStamped, '/local_position/pose', self.pose_callback, qos_profile_sensor_data)
 
+        # Publishers
         self.pub_next_wp = self.create_publisher(PointStamped, '/aco_next_waypoint', 10)
         self.neg_pub = self.create_publisher(PointStamped, '/pheromone_deposit_neg', 10)
         self.mode_pub = self.create_publisher(String, '/aco_mode', 10)
 
+        # Timer
         self.timer = self.create_timer(max(0.01, 1.0 / self.decision_rate), self.main_loop)
 
         self.get_logger().info(
             f"ACO Decision node started: "
-            f"explore(alpha={self.alpha_explore:.2f}, beta={self.beta_explore:.2f}, eps={self.eps_explore:.2f}), "
-            f"converge(alpha={self.alpha_converge:.2f}, beta={self.beta_converge:.2f}), "
-            f"rate={self.decision_rate:.2f} Hz, waypoints={len(self.waypoints)}, "
-            f"map={self.width}x{self.height}@{self.resolution}m"
+            f"EXPLORE(grid sample) a={self.alpha_explore:.2f} b={self.beta_explore:.2f} g={self.gamma_explore:.2f} eps={self.eps_explore:.2f} "
+            f"| CONVERGE(argmax score) a={self.alpha_converge:.2f} b={self.beta_converge:.2f} "
+            f"| map={self.width}x{self.height}@{self.resolution}m rate={self.decision_rate:.2f}Hz"
         )
 
     def map_callback(self, msg: Float32MultiArray):
@@ -150,7 +157,6 @@ class ACODecisionNode(Node):
         arr = np.array(msg.data, dtype=np.float32)
         expected = self.width * self.height
         if arr.size != expected:
-            self.get_logger().debug(f"Neg map size mismatch ({arr.size} != {expected})")
             return
         self.map_neg = arr.reshape((self.height, self.width))
 
@@ -172,32 +178,16 @@ class ACODecisionNode(Node):
         cy = int((y - self.origin_y) / self.resolution)
         return cx, cy
 
-    def map_value_pos(self, x, y):
-        cx, cy = self.world_to_cell(x, y)
-        if self.map_pos is None:
-            return 0.0
-        h, w = self.map_pos.shape
-        if 0 <= cx < w and 0 <= cy < h:
-            return float(self.map_pos[cy, cx])
-        return 0.0
-
-    def map_value_neg(self, x, y):
-        cx, cy = self.world_to_cell(x, y)
-        if self.map_neg is None:
-            return 0.0
-        h, w = self.map_neg.shape
-        if 0 <= cx < w and 0 <= cy < h:
-            return float(self.map_neg[cy, cx])
-        return 0.0
-
-    def world_to_cell_value(self, x, y):
-        """Return combined pheromone tau = max(0, pos - neg)."""
-        val_pos = self.map_value_pos(x, y)
-        val_neg = self.map_value_neg(x, y)
-        return max(0.0, val_pos - val_neg)
+    def _world_grids(self):
+        if self._X is not None and self._Y is not None:
+            return self._X, self._Y
+        xs = self.origin_x + (np.arange(self.width, dtype=np.float32) + 0.5) * self.resolution
+        ys = self.origin_y + (np.arange(self.height, dtype=np.float32) + 0.5) * self.resolution
+        self._X, self._Y = np.meshgrid(xs, ys)  # (H,W)
+        return self._X, self._Y
 
     def find_hotspot_peak(self):
-        """Return (peak_x, peak_y, peak_val) of the POSITIVE map."""
+        """Return (peak_x, peak_y, peak_val) from POSITIVE map."""
         if self.map_pos is None:
             return None
         cy, cx = np.unravel_index(np.argmax(self.map_pos), self.map_pos.shape)
@@ -205,129 +195,132 @@ class ACODecisionNode(Node):
         px, py = self.cell_to_world(cx, cy)
         return (px, py, peak_val)
 
-    def find_converge_best_cell(self):
+    def _effective_tau_grid(self):
+        """tau = max(0, pos - neg) over the whole grid."""
+        if self.map_pos is None:
+            return None
+        if self.map_neg is None:
+            return np.maximum(self.map_pos, 0.0).astype(np.float32)
+        return np.maximum(self.map_pos - self.map_neg, 0.0).astype(np.float32)
+
+    def sample_explore_cell_simple(self):
+        if self.map_pos is None or self.current_pose is None:
+            return None
+
+        tau_grid = self._effective_tau_grid()
+        if tau_grid is None:
+            return None
+
+        if self.tau_clip_explore > 0.0:
+            tau_grid = np.minimum(tau_grid, float(self.tau_clip_explore))
+
+        neg_grid = np.zeros_like(tau_grid, dtype=np.float32) if self.map_neg is None else self.map_neg.astype(np.float32)
+
+        px, py = self.current_pose
+        a, b, g = self.alpha_explore, self.beta_explore, self.gamma_explore
+
+        X, Y = self._world_grids()
+        dx = X - float(px)
+        dy = Y - float(py)
+        dist = np.sqrt(dx * dx + dy * dy).astype(np.float32)
+
+        dist_eta = np.maximum(dist, max(self.explore_min_eta_dist, self.eps)).astype(np.float32)
+        eta = (1.0 / dist_eta).astype(np.float32)
+
+        tau = tau_grid.astype(np.float32) + self.eps
+        neg = np.maximum(0.0, neg_grid).astype(np.float32)
+
+        score = (tau ** (-a)) * (eta ** b) * ((1.0 + neg) ** (-g))
+
+        score[~np.isfinite(score)] = 0.0
+        score[score < 0.0] = 0.0
+
+        # too close to drone
+        score[dist < self.explore_min_target_sep] = 0.0
+
+        if self.block_r_cells > 0:
+            cpx, cpy = self.world_to_cell(px, py)
+            x0 = max(0, cpx - self.block_r_cells)
+            x1 = min(self.width, cpx + self.block_r_cells + 1)
+            y0 = max(0, cpy - self.block_r_cells)
+            y1 = min(self.height, cpy + self.block_r_cells + 1)
+            score[y0:y1, x0:x1] = 0.0
+
+        # optional hard-block on neg
+        if self.explore_neg_block_threshold >= 0.0:
+            score[neg_grid > self.explore_neg_block_threshold] = 0.0
+
+        # mask around last hotspot
+        if self.mask_radius_explore > 0.0 and self.peak_xy is not None:
+            hx, hy = self.peak_xy
+            mdx = X - float(hx)
+            mdy = Y - float(hy)
+            m2 = mdx * mdx + mdy * mdy
+            score[m2 <= (self.mask_radius_explore ** 2)] = 0.0
+
+        # avoid repeating last target
+        if self.last_wp_sent is not None:
+            lx, ly = self.last_wp_sent
+            ldx = X - float(lx)
+            ldy = Y - float(ly)
+            l2 = ldx * ldx + ldy * ldy
+            score[l2 < (self.min_wp_sep ** 2)] = 0.0
+
+        weights = score.astype(np.float64).ravel()
+        nz = np.flatnonzero(weights > 0.0)
+        if nz.size == 0:
+            return None
+
+        # epsilon random among valid cells (optional)
+        if random.random() < max(0.0, min(1.0, self.eps_explore)):
+            idx = int(np.random.choice(nz))
+        else:
+            w = weights[nz]
+            s = float(w.sum())
+            if not math.isfinite(s) or s <= 0.0:
+                return None
+            p = w / s
+            p = p / float(p.sum())
+            idx = int(np.random.choice(nz, p=p))
+
+        cy = idx // self.width
+        cx = idx % self.width
+        wx, wy = self.cell_to_world(int(cx), int(cy))
+        return (wx, wy, float(score[cy, cx]))
+
+
+    def find_converge_argmax_score_cell(self):
         if self.map_pos is None:
             return None
 
-        if self.map_neg is None:
-            tau_grid = np.maximum(self.map_pos, 0.0)
-        else:
-            tau_grid = np.maximum(self.map_pos - self.map_neg, 0.0)
+        tau_grid = self._effective_tau_grid()
+        if tau_grid is None:
+            return None
 
         tau = tau_grid.astype(np.float32) + self.eps
-        a = self.alpha_converge
-        b = self.beta_converge
+        a, b = self.alpha_converge, self.beta_converge
 
         if self.current_pose is None:
             cy, cx = np.unravel_index(np.argmax(tau), tau.shape)
-            wx, wy = self.cell_to_world(cx, cy)
-            best_score = float(tau[cy, cx] ** a)
-            return (wx, wy, best_score)
+            wx, wy = self.cell_to_world(int(cx), int(cy))
+            return (wx, wy, float(tau[cy, cx] ** a))
 
         px, py = self.current_pose
-
-        xs = self.origin_x + (np.arange(self.width, dtype=np.float32) + 0.5) * self.resolution
-        ys = self.origin_y + (np.arange(self.height, dtype=np.float32) + 0.5) * self.resolution
-        X, Y = np.meshgrid(xs, ys)  # (H,W)
+        X, Y = self._world_grids()
 
         dx = X - float(px)
         dy = Y - float(py)
-        dist = np.sqrt(dx * dx + dy * dy) + 5.0
-        eta = 1.0 / dist
+        dist = np.sqrt(dx * dx + dy * dy).astype(np.float32)
+
+        dist_eta = np.maximum(dist, max(self.converge_min_eta_dist, self.eps)).astype(np.float32)
+        eta = (1.0 / dist_eta).astype(np.float32)
 
         score = (tau ** a) * (eta ** b)
+        score[~np.isfinite(score)] = -np.inf
+
         cy, cx = np.unravel_index(np.argmax(score), score.shape)
-        wx, wy = self.cell_to_world(cx, cy)
+        wx, wy = self.cell_to_world(int(cx), int(cy))
         return (wx, wy, float(score[cy, cx]))
-
-    def tau_for_explore(self, x, y):
-        """Mode-aware pheromone for EXPLORE: clip and optionally mask around last hotspot (peak_xy)."""
-        tau = self.world_to_cell_value(x, y)
-        if self.tau_clip_explore > 0.0:
-            tau = min(tau, self.tau_clip_explore)
-        if self.mask_radius_explore > 0.0 and self.peak_xy is not None:
-            dx = x - self.peak_xy[0]
-            dy = y - self.peak_xy[1]
-            if dx * dx + dy * dy <= self.mask_radius_explore * self.mask_radius_explore:
-                tau = 0.0
-        return tau
-
-    def candidate_ok_for_pose(self, wp):
-        """Reject candidates that are too close to the current pose's cell (prevents self-gluing)."""
-        if self.current_pose is None:
-            return True
-        px, py = self.current_pose
-        cpx, cpy = self.world_to_cell(px, py)
-        cwx, cwy = self.world_to_cell(wp['x'], wp['y'])
-        return abs(cpx - cwx) > self.block_r_cells or abs(cpy - cwy) > self.block_r_cells
-
-    def far_enough_from_last_wp(self, x, y):
-        if self.last_wp_sent is None:
-            return True
-        lx, ly = self.last_wp_sent
-        return math.hypot(x - lx, y - ly) >= self.min_wp_sep
-
-    def choose_next(self, current_idx: int, mode: str) -> int:
-        # Epsilon-greedy random hop in EXPLORE
-        if mode == 'EXPLORE' and random.random() < max(0.0, min(1.0, self.eps_explore)):
-            candidates = [
-                i for i in range(len(self.waypoints))
-                if i != current_idx
-                and self.candidate_ok_for_pose(self.waypoints[i])
-                and self.far_enough_from_last_wp(self.waypoints[i]['x'], self.waypoints[i]['y'])
-            ]
-            if candidates:
-                return random.choice(candidates)
-
-        current = self.waypoints[current_idx]
-        scores = []
-        for j, wp in enumerate(self.waypoints):
-            if j == current_idx:
-                scores.append(0.0)
-                continue
-
-            if not self.candidate_ok_for_pose(wp):
-                scores.append(0.0)
-                continue
-            if not self.far_enough_from_last_wp(wp['x'], wp['y']):
-                scores.append(0.0)
-                continue
-
-            if mode == 'EXPLORE':
-                tau = self.tau_for_explore(wp['x'], wp['y']) + self.eps
-                neg = self.map_value_neg(wp['x'], wp['y'])
-                a = self.alpha_explore
-                b = self.beta_explore
-                g = self.gamma_explore
-
-                dist = math.hypot(wp['x'] - current['x'], wp['y'] - current['y']) + self.eps
-                eta = 1.0 / dist
-
-                score = (tau ** (-a)) * (eta ** b) * ((1.0 + neg) ** (-g))
-            else:
-                tau = self.world_to_cell_value(wp['x'], wp['y']) + self.eps
-                a = self.alpha_converge
-                b = self.beta_converge
-                dist = math.hypot(wp['x'] - current['x'], wp['y'] - current['y']) + self.eps
-                eta = 1.0 / dist
-                score = (tau ** a) * (eta ** b)
-
-            scores.append(score)
-
-        total = sum(scores)
-        if total <= 0.0:
-            candidates = [
-                i for i in range(len(self.waypoints))
-                if i != current_idx
-                and self.candidate_ok_for_pose(self.waypoints[i])
-                and self.far_enough_from_last_wp(self.waypoints[i]['x'], self.waypoints[i]['y'])
-            ]
-            if not candidates:
-                candidates = [i for i in range(len(self.waypoints)) if i != current_idx]
-            return random.choice(candidates)
-
-        probs = [v / total for v in scores]
-        return int(np.random.choice(range(len(probs)), p=probs))
 
     def main_loop(self):
         if self.map_pos is None:
@@ -335,6 +328,7 @@ class ACODecisionNode(Node):
 
         peak = self.find_hotspot_peak()
         now = self.get_clock().now().nanoseconds / 1e9
+
         in_cooldown = False
         if self.last_converge_exit is not None:
             in_cooldown = (now - self.last_converge_exit) < self.mode_cooldown_secs
@@ -352,7 +346,6 @@ class ACODecisionNode(Node):
                     self.mode = 'CONVERGE'
                     self.hotspot_xy = (px, py)
                     self.peak_xy = self.hotspot_xy
-
                     self.converge_dwell = 0
                     self.detect_counter = 0
                     self.publish_mode()
@@ -376,18 +369,21 @@ class ACODecisionNode(Node):
         msg.header.frame_id = "world"
 
         if self.mode == 'CONVERGE':
-            latest_peak = self.find_hotspot_peak()
-            if latest_peak is not None:
-                self.hotspot_xy = (latest_peak[0], latest_peak[1])
+            latest = self.find_hotspot_peak()
+            if latest is not None:
+                self.hotspot_xy = (latest[0], latest[1])
                 self.peak_xy = self.hotspot_xy
 
-            best = self.find_converge_best_cell()
-            if best is not None:
-                bx, by, bscore = best
-                target_x, target_y = bx, by
+            if self.hotspot_xy is None:
+                self.mode = 'EXPLORE'
+                self.publish_mode()
+                return
+
+            best = self.find_converge_argmax_score_cell()
+            if best is None:
+                target_x, target_y = self.hotspot_xy
             else:
-                # fallback: move toward hotspot if score not available
-                target_x, target_y = self.hotspot_xy if self.hotspot_xy is not None else self.peak_xy
+                target_x, target_y, _ = best
 
             if not self.hotspot_direct and self.current_pose is not None:
                 px, py = self.current_pose
@@ -405,11 +401,7 @@ class ACODecisionNode(Node):
             self.pub_next_wp.publish(msg)
             self.last_wp_sent = (msg.point.x, msg.point.y)
 
-            hx, hy = self.hotspot_xy if self.hotspot_xy is not None else self.peak_xy
-            self.get_logger().info(
-                f"[CONVERGE] target=({target_x:.1f},{target_y:.1f}) hotspot=({hx:.1f},{hy:.1f})"
-            )
-
+            hx, hy = self.hotspot_xy
             d = float('inf')
             if self.current_pose is not None:
                 px, py = self.current_pose
@@ -434,10 +426,7 @@ class ACODecisionNode(Node):
                         m.point.z = float(self.visit_neg_amount)
                         self.neg_pub.publish(m)
 
-                self.get_logger().info(
-                    f"[CONVERGE] cooled hotspot at ({hx:.1f},{hy:.1f}); → EXPLORE"
-                )
-
+                self.get_logger().info(f"[CONVERGE] cooled hotspot at ({hx:.1f},{hy:.1f}); → EXPLORE")
                 self.mode = 'EXPLORE'
                 self.converge_dwell = 0
                 self.last_converge_exit = now
@@ -455,25 +444,28 @@ class ACODecisionNode(Node):
             vmsg.point.z = float(self.explore_neg_amount)
             self.neg_pub.publish(vmsg)
 
-        next_idx = self.choose_next(self.current_idx, mode='EXPLORE')
-        target = self.waypoints[next_idx]
+        choice = self.sample_explore_cell_simple()
+        if choice is None:
+            return
+        bx, by, _ = choice
 
-        tx, ty = target['x'], target['y']
+        tx, ty = bx, by
         if self.current_pose is not None:
             px, py = self.current_pose
             dx = tx - px
             dy = ty - py
             dist = math.hypot(dx, dy)
             if dist > 1e-3:
-                step = self.explore_step
-                scale = min(1.0, step / dist)
+                scale = min(1.0, self.explore_step / dist)
                 tx = px + dx * scale
                 ty = py + dy * scale
 
-        if not self.far_enough_from_last_wp(tx, ty):
-            ang = random.uniform(0.0, 2.0 * math.pi)
-            tx += self.min_wp_sep * math.cos(ang)
-            ty += self.min_wp_sep * math.sin(ang)
+        if self.last_wp_sent is not None:
+            lx, ly = self.last_wp_sent
+            if math.hypot(tx - lx, ty - ly) < self.min_wp_sep:
+                ang = random.uniform(0.0, 2.0 * math.pi)
+                tx += self.min_wp_sep * math.cos(ang)
+                ty += self.min_wp_sep * math.sin(ang)
 
         msg.point.x = float(tx)
         msg.point.y = float(ty)
@@ -481,11 +473,7 @@ class ACODecisionNode(Node):
         self.pub_next_wp.publish(msg)
         self.last_wp_sent = (msg.point.x, msg.point.y)
 
-        self.get_logger().info(
-            f"[EXPLORE] From {self.current_idx} → {next_idx} cand=({self.waypoints[next_idx]['x']:.1f},{self.waypoints[next_idx]['y']:.1f}) "
-            f"→ step_to=({tx:.1f}, {ty:.1f})"
-        )
-        self.current_idx = next_idx
+        self.get_logger().info(f"[EXPLORE(grid sample)] sampled=({bx:.1f},{by:.1f}) step_to=({tx:.1f},{ty:.1f})")
 
 
 def main(args=None):
